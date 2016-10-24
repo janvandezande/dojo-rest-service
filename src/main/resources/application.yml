@@ -1,0 +1,5 @@
+spring:
+    application:
+        name: rest-service-for-dojo-workshop
+server:
+    port: 8082
