@@ -13,7 +13,15 @@ import java.util.Date;
  *
  * @author BKJVZ
  */
-class FileListJSON {
+public class FileListJSON {
+
+    public FileListJSON() {
+    }
+    @JsonProperty("id")
+    private long id;
+    
+    @JsonProperty("path")
+    private String path;
 
     @JsonProperty("name")
     private String name;
@@ -32,7 +40,9 @@ class FileListJSON {
     @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd")
     private Date modificationDate;
 
-    public FileListJSON(String name, String type, long size, Date creationDate, Date modificationDate) {
+    public FileListJSON(long id, String path, String name, String type, long size, Date creationDate, Date modificationDate) {
+        this.id = id;
+        this.path = path;
         this.name = name;
         this.size = size;
         this.type = type;
@@ -108,6 +118,34 @@ class FileListJSON {
      */
     public void setModificationDate(Date modificationDate) {
         this.modificationDate = modificationDate;
+    }
+
+    /**
+     * @return the id
+     */
+    public long getId() {
+        return id;
+    }
+
+    /**
+     * @param id the id to set
+     */
+    public void setId(long id) {
+        this.id = id;
+    }
+
+    /**
+     * @return the path
+     */
+    public String getPath() {
+        return path;
+    }
+
+    /**
+     * @param path the path to set
+     */
+    public void setPath(String path) {
+        this.path = path;
     }
 
 }

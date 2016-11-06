@@ -5,6 +5,12 @@
  */
 package sampleapp;
 
+import java.io.UnsupportedEncodingException;
+import java.net.URLDecoder;
+import java.net.URLEncoder;
+import java.util.logging.Level;
+import java.util.logging.Logger;
+
 /**
  *
  * @author BKJVZ
@@ -12,11 +18,18 @@ package sampleapp;
 public class FileRestHelper {
 
     static String toId(String path) {
-        return path.replaceAll(":", "_58_").replaceAll("\\\\", "_92_");
+        return path.replaceAll("\\\\", "/")
+                .replaceAll(":", "_" + (int) ':' + "_")
+                .replaceAll("/", "_" + (int) '/' + "_")
+                .replaceAll(" ", "_" + (int) ' ' + "_")
+                .replaceAll("\\.", "_" + (int) '.' + "_");
     }
 
     static String toPath(String id) {
-        return id.replaceAll("_58_", ":").replaceAll("_92_", "/");
+        return id.replaceAll("_" + (int) ':' + "_", ":")
+                .replaceAll("_" + (int) '/' + "_", "/")
+                .replaceAll("_" + (int) ' ' + "_", " ")
+                .replaceAll("_" + (int) '.' + "_", ".");
     }
-    
+
 }

@@ -8,21 +8,31 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import static sampleapp.FileRestHelper.toId;
 import static sampleapp.FileRestHelper.toPath;
 
 @RestController
 @RequestMapping("/grid")
 public class GridController {
 
+    private static Map<Long, FileListJSON> filesListCache = new HashMap<>();
+    private long idCounter = 0;
+
     public List<FileListJSON> getFileListDefault() {
-        return getFileList("d_58__92_Dojo Workshop", null);
+        return getFileList("c_58__92_Dojo Workshop", null);
     }
 
 //    @RequestMapping({"/filelist/{path}"})
@@ -33,7 +43,10 @@ public class GridController {
 //    }
     @RequestMapping({"/filelist/{path}"})
     public List<FileListJSON> getFileList(@PathVariable(value = "path") String path, @RequestParam(value = "sort", required = false) String sort) {
-        System.out.println(sort);
+//        System.out.println(sort);
+        if (path.equals("new")) {
+            return new ArrayList();
+        }
         File folder = new File(toPath(path));
         try {
             final List filesAndSubfiles = getFilesAndSubfiles(new ArrayList(), folder);
@@ -47,28 +60,76 @@ public class GridController {
         }
     }
 
+    /**
+     *
+     * @param path
+     * @param id
+     * @param sort
+     * @return
+     * @throws IOException
+     */
+    @RequestMapping(path = "/filelist/{path}/{id}", method = RequestMethod.GET)
+    public FileListJSON getFileDetail(@PathVariable(value = "path") String path, @PathVariable(value = "id") long id, @RequestParam(value = "sort", required = false) String sort) throws IOException {
+            System.out.println("sampleapp.GridController.getFileDetail() id:" + id);
+            System.out.println("sampleapp.GridController.getFileDetail() name:" + filesListCache.get(id).getName());
+            System.out.println("sampleapp.GridController.getFileDetail() path:" + filesListCache.get(id).getPath());
+        return filesListCache.get(id);
+    }
+
+    @RequestMapping(path = "/filelist/{path}/{id}", method = RequestMethod.PUT)
+    public ResponseEntity<?> updateFileDetail(@PathVariable(value = "path") String path, @PathVariable(value = "id") long id, @RequestBody FileListJSON input) {
+        FileListJSON fileListJSONCache = filesListCache.get(id);
+        if (!fileListJSONCache.getName().equals(input.getName())) {
+            File document;
+            document = new File(toPath(fileListJSONCache.getPath()));
+            File newfile = new File(document.getParentFile().getPath() + "/" + input.getName() + input.getType());
+            document.renameTo(newfile);
+            input.setPath(toId(newfile.getPath()));
+            fileListJSONCache.setName(input.getName());
+            fileListJSONCache.setPath(toId(newfile.getPath()));
+            System.out.println("sampleapp.GridController.updateFileDetail() id:" + id);
+            System.out.println("sampleapp.GridController.updateFileDetail() name:" + filesListCache.get(id).getName());
+            System.out.println("sampleapp.GridController.updateFileDetail() path:" + filesListCache.get(id).getPath());
+//            input.setId(toId(newfile.getPath()));
+//            filesListCache.put(input.getId(), input);
+//            filesListCache.remove(fileListJSONCache.getId());
+        }
+        return new ResponseEntity<>(input, HttpStatus.CREATED);
+    }
+
     private List<FileListJSON> getFilesAndSubfiles(List<FileListJSON> result, File folder) throws IOException {
+        filesListCache.clear();
+        idCounter = 0;
+        if (!folder.isDirectory()) {
+            return new ArrayList();
+        }
         File[] listFiles = folder.listFiles();
         for (File listFile : listFiles) {
             if (listFile.isDirectory()) {
                 getFilesAndSubfiles(result, listFile);
             } else {
-                String name = listFile.getName();
-                String extention = "";
-                if (name.contains(".")) {
-                    name = listFile.getName().substring(0, listFile.getName().lastIndexOf("."));
-                    extention = listFile.getName().substring(listFile.getName().lastIndexOf("."));
-                }
-                result.add(new FileListJSON(name,
-                        extention,
-                        (long) Files.getAttribute(listFile.toPath(), "size"),
-                        new Date(((FileTime) Files.getAttribute(listFile.toPath(), "creationTime")).toMillis()),
-                        new Date(listFile.lastModified())
-                ));
+                result.add(createFileListJSON(listFile));
             }
 
         }
         return result;
+    }
+
+    private FileListJSON createFileListJSON(File listFile) throws IOException {
+        FileListJSON fileListJSON;
+        String name = listFile.getName();
+        String extention = "";
+        if (name.contains(".")) {
+            name = listFile.getName().substring(0, listFile.getName().lastIndexOf("."));
+            extention = listFile.getName().substring(listFile.getName().lastIndexOf("."));
+        }
+        fileListJSON = new FileListJSON(idCounter, FileRestHelper.toId(listFile.getAbsolutePath()), name,
+                extention,
+                (long) Files.getAttribute(listFile.toPath(), "size"),
+                new Date(((FileTime) Files.getAttribute(listFile.toPath(), "creationTime")).toMillis()),
+                new Date(listFile.lastModified()));
+        filesListCache.put(idCounter++, fileListJSON);
+        return fileListJSON;
     }
 
     private class FileListJSONComperator implements Comparator<FileListJSON> {
@@ -99,9 +160,9 @@ public class GridController {
             } else if (sort.equals("(desc_type)")) {
                 return o1.getType().compareTo(o2.getType());
             } else if (sort.equals("(asc_size)")) {
-                return ((Long)o2.getSize()).compareTo(((Long)o1.getSize()));
+                return ((Long) o2.getSize()).compareTo(((Long) o1.getSize()));
             } else if (sort.equals("(desc_size)")) {
-                return ((Long)o1.getSize()).compareTo(((Long)o2.getSize()));
+                return ((Long) o1.getSize()).compareTo(((Long) o2.getSize()));
             } else {
                 return 0;
             }
